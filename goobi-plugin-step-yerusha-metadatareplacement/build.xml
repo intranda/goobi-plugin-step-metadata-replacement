@@ -1,0 +1,8 @@
+<project name="goobi-plugin-workflow-excelimport" default="devbuild">
+	<target name="devbuild">
+		<exec executable="mvn">
+			<arg value="package"/>
+		</exec>
+		<copy file="module-main/target/plugin_intranda_step_yerusha-metadata-replacement.jar" todir="/opt/digiverso/goobi/plugins/step/"/>
+	</target>
+</project>

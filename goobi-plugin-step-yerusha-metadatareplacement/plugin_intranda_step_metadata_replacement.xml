@@ -1,0 +1,13 @@
+<config_plugin>
+    <config>
+        <project>*</project>
+        <step>*</step>
+        <entry>
+            <checkMetadata>Note</checkMetadata>
+            <createMetadata>Description</createMetadata>
+            <vocabulary>Subject terms</vocabulary>
+            <fieldToCheck>original value</fieldToCheck>
+            <controlledField>corrected value</controlledField>
+       </entry>
+    </config>
+</config_plugin>

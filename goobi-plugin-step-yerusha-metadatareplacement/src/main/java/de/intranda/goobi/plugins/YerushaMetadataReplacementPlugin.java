@@ -173,7 +173,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
 //                    	newMetadata.setValue(getNormedValue(splittedValue.trim(), entry));
 //                        Metadata newMetadata = new Metadata(prefs.getMetadataTypeByName(entry.getFieldTo()));
                         
-                        Metadata newMetadata = getNormedMetadata(splittedValue.trim(), entry, prefs);
+                        Metadata newMetadata = getNormedMetadata(splittedValue.trim(), entry, prefs, md);
                         docstruct.addMetadata(newMetadata);
 
                     } catch (MetadataTypeNotAllowedException e) {
@@ -184,7 +184,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         }
     }
 
-    private Metadata getNormedMetadata(String value, ReplacementEntry entry, Prefs prefs) throws MetadataTypeNotAllowedException {
+    private Metadata getNormedMetadata(String value, ReplacementEntry entry, Prefs prefs, Metadata originalMetadata) throws MetadataTypeNotAllowedException {
     	// search for a record containing the search value
         List<VocabRecord> records =  VocabularyManager.findRecords(entry.getVocabulary(), value, entry.getContentSearch());
         if (records != null && !records.isEmpty()) {
@@ -192,22 +192,51 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
             
             // if record was found, get the normed value
             String fieldTo = entry.getFieldTo();
+            String fieldToDynamic = entry.getFieldToDynamic();
+            String contentAuthority = null;
+            String contentAuthorityUri = null;
+            String contentAuthorityValueUri = null;
             
             // if a fieldToDynamic is defined, get it from the vocabulary record
-            if (!StringUtils.isEmpty(entry.getFieldToDynamic())) {
+            if (!StringUtils.isEmpty(fieldToDynamic)) {
             	for (Field field : fields) {
-                    if (field.getLabel().equals(entry.getFieldToDynamic())) {
+                    if (field.getLabel().equals(fieldToDynamic)) {
                     	fieldTo = field.getValue();
                     }
                 }
             }
             
+            // run through all fields to collect the authority data
+        	for (Field field : fields) {
+        		if (field.getLabel().equals(entry.getContentAuthority())) {
+                	contentAuthority = field.getValue();
+                }
+        		if (field.getLabel().equals(entry.getContentAuthorityUri())) {
+                	contentAuthorityUri = field.getValue();
+                }
+        		if (field.getLabel().equals(entry.getContentAuthorityValueUri())) {
+                	contentAuthorityValueUri = field.getValue();
+                }
+            }
+           
             // now run through all fields to find the right one where to put the replaced value to
             for (Field field : fields) {
                 if (field.getLabel().equals(entry.getContentReplace())) {
                 	Metadata md = new Metadata(prefs.getMetadataTypeByName(fieldTo));
                     md.setValue(field.getValue());
-                	return md;
+                    
+                    // if an authority value url is given in the vocabulary take this
+                    if(!StringUtils.isEmpty(contentAuthorityValueUri)) {
+                    	md.setAuthorityID(contentAuthority);
+                    	md.setAuthorityURI(contentAuthorityUri);
+                    	md.setAuthorityValue(contentAuthorityValueUri);
+                    } else {
+                    	// if not authority is contained in the vocabulary take it from the original record
+                    	md.setAuthorityID(originalMetadata.getAuthorityID());
+                        md.setAuthorityURI(originalMetadata.getAuthorityURI());
+                        md.setAuthorityValue(originalMetadata.getAuthorityValue());
+                    }
+                    return md;
                 }
             }
         }
@@ -215,6 +244,9 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         // return the original value, if no record was found
         Metadata md = new Metadata(prefs.getMetadataTypeByName(entry.getFieldTo()));
         md.setValue(value);
+        md.setAuthorityID(originalMetadata.getAuthorityID());
+        md.setAuthorityURI(originalMetadata.getAuthorityURI());
+        md.setAuthorityValue(originalMetadata.getAuthorityValue());
         return md;
     }
 
@@ -250,6 +282,9 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         private String vocabulary;
         private String contentSearch;
         private String contentReplace;
+        private String contentAuthority;
+        private String contentAuthorityUri;
+        private String contentAuthorityValueUri;
 
         public ReplacementEntry(HierarchicalConfiguration sub) {
             fieldFrom = sub.getString("fieldFrom");
@@ -258,6 +293,9 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
             vocabulary = sub.getString("vocabulary");
             contentSearch = sub.getString("contentSearch");
             contentReplace = sub.getString("contentReplace");
+            contentAuthority = sub.getString("contentAuthority");
+            contentAuthorityUri = sub.getString("contentAuthorityUri");
+            contentAuthorityValueUri = sub.getString("contentAuthorityValueUri");
         }
     }
  

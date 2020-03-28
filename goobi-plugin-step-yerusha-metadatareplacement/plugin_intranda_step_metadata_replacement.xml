@@ -7,10 +7,16 @@
         	<!-- from which field inside of the METS file shall the content be used -->
             <fieldFrom>originalAccessLocations</fieldFrom>
 			
-			<!-- into which fields shall the new content be written -->
-			<!-- Notice: if the content is 'vocabularyField:test' then 
-			the targetField will be read from the vocabulary record from field 'test' -->
-            <fieldTo>AccessLocations</fieldTo>
+			<!-- into which fields in the METS shall the new content be written -->
+			<fieldTo>AccessLocations</fieldTo>
+            
+            <!-- if the fieldTo is named inside of the vocabulary entry itself: 
+            in which vocabulary field of the entry is the METS metadata name defined 
+            to be used?
+            Please notice: if the entry cannot be found (as fieldFrom is not found there) 
+            and that's why no fieldToDynamic can be read from the entry the value of element fieldTo 
+			defined will be used to simply copy the original metadata unchanged -->
+            <fieldToDynamic>type</fieldToDynamic>
             
             <!-- what is the name of the vocabulary to use -->
             <vocabulary>Subject terms</vocabulary>
@@ -20,6 +26,7 @@
             
             <!-- the content in which vocabulary field shall be taken to write it into fieldTo -->
             <contentReplace>corrected value</contentReplace>
+       
        </entry>
     </config>
 </config_plugin>

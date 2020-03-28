@@ -3,11 +3,23 @@
         <project>*</project>
         <step>*</step>
         <entry>
-            <checkMetadata>Note</checkMetadata>
-            <createMetadata>Description</createMetadata>
+        	
+        	<!-- from which field inside of the METS file shall the content be used -->
+            <fieldFrom>originalAccessLocations</fieldFrom>
+			
+			<!-- into which fields shall the new content be written -->
+			<!-- Notice: if the content is 'vocabularyField:test' then 
+			the targetField will be read from the vocabulary record from field 'test' -->
+            <fieldTo>AccessLocations</fieldTo>
+            
+            <!-- what is the name of the vocabulary to use -->
             <vocabulary>Subject terms</vocabulary>
-            <fieldToCheck>original value</fieldToCheck>
-            <controlledField>corrected value</controlledField>
+            
+            <!-- the content in which vocabulary field has to be the same as in fieldFrom -->
+            <contentSearch>original value</contentSearch>
+            
+            <!-- the content in which vocabulary field shall be taken to write it into fieldTo -->
+            <contentReplace>corrected value</contentReplace>
        </entry>
     </config>
 </config_plugin>

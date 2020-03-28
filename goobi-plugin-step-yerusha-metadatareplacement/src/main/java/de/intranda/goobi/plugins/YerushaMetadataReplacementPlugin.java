@@ -145,9 +145,9 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         List<Metadata> originalMetadata = new ArrayList<>();
         List<Metadata> generatedMetadataList = new ArrayList<>();
         for (Metadata md : docstruct.getAllMetadata()) {
-            if (md.getType().getName().equals(entry.getOriginalMetadataName())) {
+            if (md.getType().getName().equals(entry.getFieldFrom())) {
                 originalMetadata.add(md);
-            } else if (md.getType().getName().equals(entry.getGeneratedMetadataName())) {
+            } else if (md.getType().getName().equals(entry.getFieldTo())) {
                 generatedMetadataList.add(md);
             }
         }
@@ -168,7 +168,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
                 // for each value generate new metadata
                 for (String splittedValue : splittedValues) {
                     try {
-                        Metadata newMetadata = new Metadata(prefs.getMetadataTypeByName(entry.getGeneratedMetadataName()));
+                        Metadata newMetadata = new Metadata(prefs.getMetadataTypeByName(entry.getFieldTo()));
                         // get normed value from configured vocabulary
                         newMetadata.setValue(getNormedValue(splittedValue.trim(), entry));
                         docstruct.addMetadata(newMetadata);
@@ -184,12 +184,12 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
     private String getNormedValue(String value, ReplacementEntry entry) {
 
         // search for a record containing the search value
-        List<VocabRecord> records =  VocabularyManager.findRecords(entry.getVocabularyName(), value, entry.getAlternativeValueColumnName());
+        List<VocabRecord> records =  VocabularyManager.findRecords(entry.getVocabulary(), value, entry.getContentSearch());
         if (records != null && !records.isEmpty()) {
             List<Field> fields =records.get(0).getFields();
             for (Field field : fields) {
                 // if record was found, get the normed value
-                if (field.getLabel().equals(entry.getNormedValueColumnName())) {
+                if (field.getLabel().equals(entry.getContentReplace())) {
                     return field.getValue();
                 }
             }
@@ -224,19 +224,19 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
 
     @Data
     private class ReplacementEntry {
-        private String originalMetadataName;
-        private String generatedMetadataName;
-        private String vocabularyName;
-        private String normedValueColumnName;
-        private String alternativeValueColumnName;
+        private String fieldFrom;
+        private String fieldTo;
+        private String vocabulary;
+        private String contentSearch;
+        private String contentReplace;
 
         public ReplacementEntry(HierarchicalConfiguration sub) {
-            originalMetadataName = sub.getString("checkMetadata");
-            generatedMetadataName = sub.getString("createMetadata");
-            vocabularyName = sub.getString("vocabulary");
-            alternativeValueColumnName = sub.getString("fieldToCheck");
-            normedValueColumnName = sub.getString("controlledField");
+            fieldFrom = sub.getString("fieldFrom");
+            fieldTo = sub.getString("fieldTo");
+            vocabulary = sub.getString("vocabulary");
+            contentSearch = sub.getString("contentSearch");
+            contentReplace = sub.getString("contentReplace");
         }
     }
-
+ 
 }

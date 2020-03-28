@@ -10,6 +10,7 @@ import org.apache.commons.configuration.SubnodeConfiguration;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.commons.configuration.reloading.FileChangedReloadingStrategy;
 import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
+import org.apache.commons.lang3.StringUtils;
 import org.goobi.beans.Process;
 import org.goobi.beans.Step;
 import org.goobi.production.enums.PluginGuiType;
@@ -168,9 +169,11 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
                 // for each value generate new metadata
                 for (String splittedValue : splittedValues) {
                     try {
-                        Metadata newMetadata = new Metadata(prefs.getMetadataTypeByName(entry.getFieldTo()));
-                        // get normed value from configured vocabulary
-                        newMetadata.setValue(getNormedValue(splittedValue.trim(), entry));
+                    	// get normed value from configured vocabulary
+//                    	newMetadata.setValue(getNormedValue(splittedValue.trim(), entry));
+//                        Metadata newMetadata = new Metadata(prefs.getMetadataTypeByName(entry.getFieldTo()));
+                        
+                        Metadata newMetadata = getNormedMetadata(splittedValue.trim(), entry, prefs);
                         docstruct.addMetadata(newMetadata);
 
                     } catch (MetadataTypeNotAllowedException e) {
@@ -181,21 +184,38 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         }
     }
 
-    private String getNormedValue(String value, ReplacementEntry entry) {
-
-        // search for a record containing the search value
+    private Metadata getNormedMetadata(String value, ReplacementEntry entry, Prefs prefs) throws MetadataTypeNotAllowedException {
+    	// search for a record containing the search value
         List<VocabRecord> records =  VocabularyManager.findRecords(entry.getVocabulary(), value, entry.getContentSearch());
         if (records != null && !records.isEmpty()) {
             List<Field> fields =records.get(0).getFields();
+            
+            // if record was found, get the normed value
+            String fieldTo = entry.getFieldTo();
+            
+            // if a fieldToDynamic is defined, get it from the vocabulary record
+            if (!StringUtils.isEmpty(entry.getFieldToDynamic())) {
+            	for (Field field : fields) {
+                    if (field.getLabel().equals(entry.getFieldToDynamic())) {
+                    	fieldTo = field.getValue();
+                    }
+                }
+            }
+            
+            // now run through all fields to find the right one where to put the replaced value to
             for (Field field : fields) {
-                // if record was found, get the normed value
                 if (field.getLabel().equals(entry.getContentReplace())) {
-                    return field.getValue();
+                	Metadata md = new Metadata(prefs.getMetadataTypeByName(fieldTo));
+                    md.setValue(field.getValue());
+                	return md;
                 }
             }
         }
+        
         // return the original value, if no record was found
-        return value;
+        Metadata md = new Metadata(prefs.getMetadataTypeByName(entry.getFieldTo()));
+        md.setValue(value);
+        return md;
     }
 
     @Override
@@ -226,6 +246,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
     private class ReplacementEntry {
         private String fieldFrom;
         private String fieldTo;
+        private String fieldToDynamic;
         private String vocabulary;
         private String contentSearch;
         private String contentReplace;
@@ -233,6 +254,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         public ReplacementEntry(HierarchicalConfiguration sub) {
             fieldFrom = sub.getString("fieldFrom");
             fieldTo = sub.getString("fieldTo");
+            fieldToDynamic = sub.getString("fieldToDynamic");
             vocabulary = sub.getString("vocabulary");
             contentSearch = sub.getString("contentSearch");
             contentReplace = sub.getString("contentReplace");

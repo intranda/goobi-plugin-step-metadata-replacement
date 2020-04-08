@@ -5,7 +5,7 @@
 >
     <modelVersion>4.0.0</modelVersion>
     <groupId>de.intranda.goobi.plugins.step</groupId>
-    <artifactId>yerusha-metadata-replacement</artifactId>
+    <artifactId>metadata-replacement</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
     <name>yerusha-metadata-replacement</name>

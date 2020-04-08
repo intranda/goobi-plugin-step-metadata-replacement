@@ -2,15 +2,15 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>de.intranda.goobi.plugins.step</groupId>
-	<artifactId>yerusha-metadata-replacement-main</artifactId>
+	<artifactId>metadata-replacement-main</artifactId>
 	<version>1.0.0</version>
 	<properties>
-		<jar.name>plugin_intranda_step_yerusha-metadata-replacement</jar.name>
+		<jar.name>plugin_intranda_step_metadata-replacement</jar.name>
 		<dest.folder>/opt/digiverso/goobi/plugins/step/</dest.folder>
 	</properties>
 	<parent>
 		<groupId>de.intranda.goobi.plugins.step</groupId>
-		<artifactId>yerusha-metadata-replacement</artifactId>
+		<artifactId>metadata-replacement</artifactId>
 		<version>1.0.0</version>
 	</parent>
 

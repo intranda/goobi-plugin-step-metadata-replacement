@@ -34,6 +34,9 @@
 			<contentAuthorityUri>authorityURI</contentAuthorityUri>
 			<contentAuthorityValueUri>valueURI</contentAuthorityValueUri>
 
+			<!-- if the content for fieldFrom cannot be found in the vocabulary to be replaced, 
+				shall the original value be duplicated then? -->
+			<duplicateIfMissing>false</duplicateIfMissing>
 		</entry>
 	</config>
 </config_plugin>

@@ -174,7 +174,9 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
 //                        Metadata newMetadata = new Metadata(prefs.getMetadataTypeByName(entry.getFieldTo()));
                         
                         Metadata newMetadata = getNormedMetadata(splittedValue.trim(), entry, prefs, md);
-                        docstruct.addMetadata(newMetadata);
+                        if (newMetadata!=null) {
+                        	docstruct.addMetadata(newMetadata);
+                        }
 
                     } catch (MetadataTypeNotAllowedException e) {
                         log.error(e);
@@ -241,13 +243,17 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
             }
         }
         
-        // return the original value, if no record was found
-        Metadata md = new Metadata(prefs.getMetadataTypeByName(entry.getFieldTo()));
-        md.setValue(value);
-        md.setAuthorityID(originalMetadata.getAuthorityID());
-        md.setAuthorityURI(originalMetadata.getAuthorityURI());
-        md.setAuthorityValue(originalMetadata.getAuthorityValue());
-        return md;
+        // return the original value, if no record was found and if it should be duplicated
+        if (entry.duplicateIfMissing) {
+        	Metadata md = new Metadata(prefs.getMetadataTypeByName(entry.getFieldTo()));
+        	md.setValue(value);
+        	md.setAuthorityID(originalMetadata.getAuthorityID());
+        	md.setAuthorityURI(originalMetadata.getAuthorityURI());
+        	md.setAuthorityValue(originalMetadata.getAuthorityValue());
+        	return md;
+        } else {
+        	return null;
+        }
     }
 
     @Override
@@ -285,6 +291,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         private String contentAuthority;
         private String contentAuthorityUri;
         private String contentAuthorityValueUri;
+        private boolean duplicateIfMissing = false;
 
         public ReplacementEntry(HierarchicalConfiguration sub) {
             fieldFrom = sub.getString("fieldFrom");
@@ -296,6 +303,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
             contentAuthority = sub.getString("contentAuthority");
             contentAuthorityUri = sub.getString("contentAuthorityUri");
             contentAuthorityValueUri = sub.getString("contentAuthorityValueUri");
+            duplicateIfMissing = sub.getBoolean("duplicateIfMissing", false);
         }
     }
  

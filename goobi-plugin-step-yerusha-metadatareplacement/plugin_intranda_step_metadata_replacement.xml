@@ -37,6 +37,9 @@
 			<!-- if the content for fieldFrom cannot be found in the vocabulary to be replaced, 
 				shall the original value be duplicated then? -->
 			<duplicateIfMissing>false</duplicateIfMissing>
+			
+			<!-- define if existing metadata in fieldTo shall be deleted before adding new fields -->
+			<deleteExistingFieldTo>true</deleteExistingFieldTo>
 		</entry>
 	</config>
 </config_plugin>

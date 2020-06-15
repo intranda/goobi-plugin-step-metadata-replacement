@@ -153,7 +153,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
             }
         }
         // remove old generated metadata
-        if (!generatedMetadataList.isEmpty()) {
+        if (entry.deleteExistingFieldTo && !generatedMetadataList.isEmpty()) {
             for (Metadata md : generatedMetadataList) {
                 docstruct.removeMetadata(md);
             }
@@ -292,6 +292,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         private String contentAuthorityUri;
         private String contentAuthorityValueUri;
         private boolean duplicateIfMissing = false;
+        private boolean deleteExistingFieldTo = true;
 
         public ReplacementEntry(HierarchicalConfiguration sub) {
             fieldFrom = sub.getString("fieldFrom");
@@ -304,6 +305,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
             contentAuthorityUri = sub.getString("contentAuthorityUri");
             contentAuthorityValueUri = sub.getString("contentAuthorityValueUri");
             duplicateIfMissing = sub.getBoolean("duplicateIfMissing", false);
+            deleteExistingFieldTo = sub.getBoolean("deleteExistingFieldTo", true);
         }
     }
  

@@ -32,7 +32,7 @@
             <groupId>de.intranda.goobi.workflow</groupId>
             <artifactId>goobi-core-jar</artifactId>
             <!-- TODO use goobi version with vocabularies included -->
-            <version>3.0.56</version> 
+            <version>3.0.57</version> 
             <exclusions>
                 <exclusion>
                     <groupId>com.sun.java</groupId>

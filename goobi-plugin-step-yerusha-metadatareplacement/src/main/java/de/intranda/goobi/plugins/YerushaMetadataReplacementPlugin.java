@@ -21,6 +21,9 @@ import org.goobi.production.plugin.interfaces.IStepPluginVersion2;
 import org.goobi.vocabulary.Field;
 import org.goobi.vocabulary.VocabRecord;
 
+import de.intranda.digiverso.normdataimporter.NormDataImporter;
+import de.intranda.digiverso.normdataimporter.model.MarcRecord;
+import de.intranda.digiverso.normdataimporter.model.MarcRecord.DatabaseUrl;
 import de.sub.goobi.config.ConfigPlugins;
 import de.sub.goobi.helper.exceptions.DAOException;
 import de.sub.goobi.helper.exceptions.SwapException;
@@ -190,9 +193,11 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
     	// search for a record containing the search value
         List<VocabRecord> records =  VocabularyManager.findRecords(entry.getVocabulary(), value, entry.getContentSearch());
         if (records != null && !records.isEmpty()) {
-            List<Field> fields =records.get(0).getFields();
+            // first load the entire record again with all fields from vocabulary
+        	VocabRecord myRecord = VocabularyManager.getRecord(records.get(0).getVocabularyId(), records.get(0).getId());
+        	List<Field> fields = myRecord.getFields();
             
-            // if record was found, get the normed value
+            // after record was loaded, get the normed value
             String fieldTo = entry.getFieldTo();
             String fieldToDynamic = entry.getFieldToDynamic();
             String contentAuthority = null;
@@ -220,6 +225,11 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
                 	contentAuthorityValueUri = field.getValue();
                 }
             }
+        	
+        	// try to get a better URL from Viaf from the original URL
+        	if (contentAuthorityValueUri != null && !contentAuthorityValueUri.isEmpty() && contentAuthorityUri.contains("https://viaf.org")) {
+        		contentAuthorityValueUri = getPreferedViafId(contentAuthorityValueUri);
+        	}
            
             // now run through all fields to find the right one where to put the replaced value to
             for (Field field : fields) {
@@ -256,6 +266,40 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         }
     }
 
+    
+	public static void main(String[] args) {
+		YerushaMetadataReplacementPlugin ymrp = new YerushaMetadataReplacementPlugin();
+		System.out.println(ymrp.getPreferedViafId("90722334"));
+//		System.out.println(ymrp.getPreferedViafId("http://viaf.org/viaf/90722334"));
+	}
+    
+	
+	/**
+	 * Method to get the URL for a viaf record from the preferred institution
+	 * 
+	 * @param oldUrl the main viaf entry url
+	 * @return String with the url of the individual preferred institution (e.g. from the LOC)
+	 */
+	public String getPreferedViafId(String oldId) {
+		MarcRecord recordToImport = NormDataImporter.getSingleMarcRecord("https://viaf.org/viaf/" + oldId + "/marc21.xml");
+		List<String> databases = new ArrayList<>();
+		databases.add("j9u");
+		databases.add("lc");
+		for (String database : databases) {
+			if (recordToImport!=null && recordToImport.getAuthorityDatabaseUrls() != null) {
+				for (DatabaseUrl url : recordToImport.getAuthorityDatabaseUrls()) {
+					if (url.getDatabaseCode().equalsIgnoreCase(database)) {
+						String result = url.getMarcRecordUrl();
+						result = result.substring(result.indexOf("processed"));
+						return result;
+					}
+				}
+			}
+		}
+		// if no better URL could be found give back the original again
+		return oldId;
+	}
+	
     @Override
     public String getPagePath() {
         return null;

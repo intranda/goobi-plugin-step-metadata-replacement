@@ -7,11 +7,7 @@ import java.util.List;
 
 import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.configuration.SubnodeConfiguration;
-import org.apache.commons.configuration.XMLConfiguration;
-import org.apache.commons.configuration.reloading.FileChangedReloadingStrategy;
-import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
 import org.apache.commons.lang3.StringUtils;
-import org.goobi.beans.Process;
 import org.goobi.beans.Step;
 import org.goobi.production.enums.PluginGuiType;
 import org.goobi.production.enums.PluginReturnValue;
@@ -52,7 +48,6 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
 
     @Getter
     private Step step;
-    private Process process;
 
     @Getter
     private String title = "intranda_step_metadata_replacement";
@@ -65,35 +60,8 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
     @Override
     public void initialize(Step step, String returnPath) {
         this.step = step;
-        process = step.getProzess();
-        String projectName = process.getProjekt().getTitel();
-
-        XMLConfiguration xmlConfig = ConfigPlugins.getPluginConfig(getTitle());
-        xmlConfig.setExpressionEngine(new XPathExpressionEngine());
-        xmlConfig.setReloadingStrategy(new FileChangedReloadingStrategy());
-
-        SubnodeConfiguration myconfig = null;
-
-        // order of configuration is:
-        // 1.) project name and step name matches
-        // 2.) step name matches and project is *
-        // 3.) project name matches and step name is *
-        // 4.) project name and step name are *
-        try {
-            myconfig = xmlConfig.configurationAt("//config[./project = '" + projectName + "'][./step = '" + step.getTitel() + "']");
-        } catch (IllegalArgumentException e) {
-            try {
-                myconfig = xmlConfig.configurationAt("//config[./project = '*'][./step = '" + step.getTitel() + "']");
-            } catch (IllegalArgumentException e1) {
-                try {
-                    myconfig = xmlConfig.configurationAt("//config[./project = '" + projectName + "'][./step = '*']");
-                } catch (IllegalArgumentException e2) {
-                    myconfig = xmlConfig.configurationAt("//config[./project = '*'][./step = '*']");
-                }
-            }
-        }
+        SubnodeConfiguration myconfig = ConfigPlugins.getProjectAndStepConfig(title, step);
         configuration = new ReplacementConfiguration(myconfig);
-
     }
 
     @Override
@@ -166,21 +134,24 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         if (!originalMetadata.isEmpty()) {
             for (Metadata md : originalMetadata) {
                 String value = md.getValue();
-                // split it on semikolon to separate values
-                String[] splittedValues = value.split(";");
-
+                
+                // split the original metadata at delimiter to separate values
+                String[] splitValues = new String[]{value};
+                if (entry.metadataDelimiter != null && entry.metadataDelimiter.length() > 0 ) {
+                    splitValues = value.split(entry.metadataDelimiter);
+                }
+                
                 // for each value generate new metadata
-                for (String splittedValue : splittedValues) {
+                for (String splittedValue : splitValues) {
                     try {
                     	// get normed value from configured vocabulary
-//                    	newMetadata.setValue(getNormedValue(splittedValue.trim(), entry));
-//                        Metadata newMetadata = new Metadata(prefs.getMetadataTypeByName(entry.getFieldTo()));
+                        // newMetadata.setValue(getNormedValue(splittedValue.trim(), entry));
+                        // Metadata newMetadata = new Metadata(prefs.getMetadataTypeByName(entry.getFieldTo()));
                         
-                        Metadata newMetadata = getNormedMetadata(splittedValue.trim(), entry, prefs, md);
-                        if (newMetadata!=null) {
-                        	docstruct.addMetadata(newMetadata);
+                        List <Metadata> newListMd = getNormedMetadata(splittedValue.trim(), entry, prefs, md);
+                        for (Metadata newMetadata : newListMd) {
+                            docstruct.addMetadata(newMetadata);
                         }
-
                     } catch (MetadataTypeNotAllowedException e) {
                         log.error(e);
                     }
@@ -189,8 +160,10 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         }
     }
 
-    private Metadata getNormedMetadata(String value, ReplacementEntry entry, Prefs prefs, Metadata originalMetadata) throws MetadataTypeNotAllowedException {
-    	// search for a record containing the search value
+    private List <Metadata> getNormedMetadata(String value, ReplacementEntry entry, Prefs prefs, Metadata originalMetadata) throws MetadataTypeNotAllowedException {
+    	List <Metadata> listMd = new ArrayList<Metadata>();
+        
+        // search for a record containing the search value
         List<VocabRecord> records =  VocabularyManager.findRecords(entry.getVocabulary(), value, entry.getContentSearch());
         if (records != null && !records.isEmpty()) {
             // first load the entire record again with all fields from vocabulary
@@ -234,43 +207,52 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
             // now run through all fields to find the right one where to put the replaced value to
             for (Field field : fields) {
                 if (field.getLabel().equals(entry.getContentReplace())) {
-                	Metadata md = new Metadata(prefs.getMetadataTypeByName(fieldTo));
-                    md.setValue(field.getValue());
-                    
-                    // if an authority value url is given in the vocabulary take this
-                    if(!StringUtils.isEmpty(contentAuthorityValueUri)) {
-                    	md.setAuthorityID(contentAuthority);
-                    	md.setAuthorityURI(contentAuthorityUri);
-                    	md.setAuthorityValue(contentAuthorityValueUri);
-                    } else {
-                    	// if not authority is contained in the vocabulary take it from the original record
-                    	md.setAuthorityID(originalMetadata.getAuthorityID());
-                        md.setAuthorityURI(originalMetadata.getAuthorityURI());
-                        md.setAuthorityValue(originalMetadata.getAuthorityValue());
+                	
+                    // split the content at delimiter to separate values
+                    String[] splitContent = new String[]{field.getValue()};
+                    if (entry.vocabularyDelimiter != null && entry.vocabularyDelimiter.length() > 0 ) {
+                        splitContent = field.getValue().split(entry.vocabularyDelimiter);
                     }
-                    return md;
+                    
+                    // now run through all split content of vocabulary field to create multiple metadata elements
+                    for (String con : splitContent) {
+                        Metadata md = new Metadata(prefs.getMetadataTypeByName(fieldTo));
+                        md.setValue(con);
+                        
+                        // if an authority value url is given in the vocabulary take this
+                        if(!StringUtils.isEmpty(contentAuthorityValueUri)) {
+                            md.setAuthorityID(contentAuthority);
+                            md.setAuthorityURI(contentAuthorityUri);
+                            md.setAuthorityValue(contentAuthorityValueUri);
+                        } else {
+                            // if not authority is contained in the vocabulary take it from the original record
+                            md.setAuthorityID(originalMetadata.getAuthorityID());
+                            md.setAuthorityURI(originalMetadata.getAuthorityURI());
+                            md.setAuthorityValue(originalMetadata.getAuthorityValue());
+                        }
+                        listMd.add(md); 
+                    }
                 }
             }
         }
         
         // return the original value, if no record was found and if it should be duplicated
-        if (entry.duplicateIfMissing) {
+        if (listMd.isEmpty() && entry.duplicateIfMissing) {
         	Metadata md = new Metadata(prefs.getMetadataTypeByName(entry.getFieldTo()));
         	md.setValue(value);
         	md.setAuthorityID(originalMetadata.getAuthorityID());
         	md.setAuthorityURI(originalMetadata.getAuthorityURI());
         	md.setAuthorityValue(originalMetadata.getAuthorityValue());
-        	return md;
-        } else {
-        	return null;
+        	listMd.add(md);
         }
+        return listMd;
     }
 
     
 	public static void main(String[] args) {
-		YerushaMetadataReplacementPlugin ymrp = new YerushaMetadataReplacementPlugin();
-		System.out.println(ymrp.getPreferedViafId("90722334"));
-//		System.out.println(ymrp.getPreferedViafId("http://viaf.org/viaf/90722334"));
+	    //YerushaMetadataReplacementPlugin ymrp = new YerushaMetadataReplacementPlugin();
+		//System.out.println(ymrp.getPreferedViafId("90722334"));
+		//System.out.println(ymrp.getPreferedViafId("http://viaf.org/viaf/90722334"));
 	}
     
 	
@@ -337,6 +319,8 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         private String contentAuthorityValueUri;
         private boolean duplicateIfMissing = false;
         private boolean deleteExistingFieldTo = true;
+        private String metadataDelimiter;
+        private String vocabularyDelimiter;
 
         public ReplacementEntry(HierarchicalConfiguration sub) {
             fieldFrom = sub.getString("fieldFrom");
@@ -350,6 +334,8 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
             contentAuthorityValueUri = sub.getString("contentAuthorityValueUri");
             duplicateIfMissing = sub.getBoolean("duplicateIfMissing", false);
             deleteExistingFieldTo = sub.getBoolean("deleteExistingFieldTo", true);
+            metadataDelimiter = sub.getString("metadataDelimiter", "");
+            vocabularyDelimiter = sub.getString("vocabularyDelimiter", "");
         }
     }
  

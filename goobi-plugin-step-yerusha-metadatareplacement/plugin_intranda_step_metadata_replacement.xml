@@ -27,6 +27,15 @@
 			<!-- the content in which vocabulary field shall be taken to write it 
 				into fieldTo -->
 			<contentReplace>corrected value</contentReplace>
+			
+			<!-- if multiple metadata elements are stored in one metadata field 
+				and shall all be used to be replaced, define a delimiter (e.g. ';' or '#') here
+				if no delimiter is defined the whole value of the metadata will be used -->
+			<metadataDelimiter>;</metadataDelimiter>
+			
+			<!-- if multiple records shall be created using a delimiter (e.g. ';' or '#') define it here
+				if no delimiter is defined just one record will be created -->
+			<vocabularyDelimiter>#</vocabularyDelimiter>
 
 			<!-- the content in which vocabulary fields shall be taken to fill the 
 				authority information for the replaced record -->

@@ -164,7 +164,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
     	List <Metadata> listMd = new ArrayList<Metadata>();
         
         // search for a record containing the search value
-        List<VocabRecord> records =  VocabularyManager.findRecords(entry.getVocabulary(), value, entry.getContentSearch());
+    	List<VocabRecord> records =  VocabularyManager.findRecords(entry.getVocabulary(), value, entry.getContentSearch());
         if (records != null && !records.isEmpty()) {
             // first load the entire record again with all fields from vocabulary
         	VocabRecord myRecord = VocabularyManager.getRecord(records.get(0).getVocabularyId(), records.get(0).getId());

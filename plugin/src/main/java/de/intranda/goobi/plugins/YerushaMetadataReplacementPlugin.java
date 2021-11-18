@@ -150,7 +150,23 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
                         
                         List <Metadata> newListMd = getNormedMetadata(splittedValue.trim(), entry, prefs, md);
                         for (Metadata newMetadata : newListMd) {
-                            docstruct.addMetadata(newMetadata);
+                        
+                            //System.out.println(newMetadata);
+                            
+                            // first run through all existing metadata to make sure it is not there already - to not have it twice
+                            boolean newFieldExistsAlready = false;
+                            for (Metadata mdTemp : docstruct.getAllMetadata()) {
+                                if (mdTemp.getType().getName().equals(newMetadata.getType().getName()) && mdTemp.getValue().equals(newMetadata.getValue())) {
+                                    newFieldExistsAlready = true;
+                                    break;
+                                }
+                                                                
+                            }
+                            
+                            //System.out.println(newMetadata);
+                            if (!newFieldExistsAlready) {
+                                docstruct.addMetadata(newMetadata);
+                            }
                         }
                     } catch (MetadataTypeNotAllowedException e) {
                         log.error(e);

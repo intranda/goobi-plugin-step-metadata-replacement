@@ -18,8 +18,8 @@ Detail                      | Description
 **Plugin identifier**       | intranda_step_metadata_replacement
 **Plugin type**             | Step Plugin
 **Licence**                 | GPL 2.0 or newer
-**Documentation (German)**  | - no documentation available - 
-**Documentation (English)** | - no documentation available -
+**Documentation (German)**  | https://docs.goobi.io/goobi-workflow-plugins-de/step/intranda_step_metadata_replacement
+**Documentation (English)** | https://docs.goobi.io/goobi-workflow-plugins-en/step/intranda_step_metadata_replacement
 
 
 Goobi details

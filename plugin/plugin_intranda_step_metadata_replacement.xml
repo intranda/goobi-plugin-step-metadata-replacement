@@ -49,6 +49,10 @@
 			
 			<!-- define if existing metadata in fieldTo shall be deleted before adding new fields -->
 			<deleteExistingFieldTo>true</deleteExistingFieldTo>
+			
+			<!-- if the same value in fieldTo exists more than once remove the duplicates -->
+			<removeDuplicatedFieldTo>false</removeDuplicatedFieldTo>
+			
 		</entry>
 	</config>
 </config_plugin>

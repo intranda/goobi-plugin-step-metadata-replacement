@@ -174,6 +174,21 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
                 }
             }
         }
+        
+        
+        // remove duplicated fieldTo metadata if wanted
+        if (entry.removeDuplicatedFieldTo) {
+            List<Metadata> temp = new ArrayList<Metadata>(docstruct.getAllMetadataByType(prefs.getMetadataTypeByName(entry.getFieldTo())));
+            List<String> knownList = new ArrayList<String>();
+            for (Metadata mdTemp : temp) {
+                String v = mdTemp.getValue();
+                if (knownList.contains(v)) {
+                    docstruct.removeMetadata(mdTemp);
+                } else {
+                    knownList.add(v);
+                }
+            }
+        }
     }
 
     private List <Metadata> getNormedMetadata(String value, ReplacementEntry entry, Prefs prefs, Metadata originalMetadata) throws MetadataTypeNotAllowedException {
@@ -335,6 +350,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         private String contentAuthorityValueUri;
         private boolean duplicateIfMissing = false;
         private boolean deleteExistingFieldTo = true;
+        private boolean removeDuplicatedFieldTo = false;
         private String metadataDelimiter;
         private String vocabularyDelimiter;
 
@@ -350,6 +366,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
             contentAuthorityValueUri = sub.getString("contentAuthorityValueUri");
             duplicateIfMissing = sub.getBoolean("duplicateIfMissing", false);
             deleteExistingFieldTo = sub.getBoolean("deleteExistingFieldTo", true);
+            removeDuplicatedFieldTo = sub.getBoolean("removeDuplicatedFieldTo", false);
             metadataDelimiter = sub.getString("metadataDelimiter", "");
             vocabularyDelimiter = sub.getString("vocabularyDelimiter", "");
         }

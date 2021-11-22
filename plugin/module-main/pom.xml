@@ -4,7 +4,7 @@
   <artifactId>metadata-replacement-main</artifactId>
   <version>1.0.0</version>
   <properties>
-    <jar.name>plugin_intranda_step_metadata-replacement</jar.name>
+    <jar.name>plugin_intranda_step_metadata_replacement</jar.name>
     <dest.folder>/opt/digiverso/goobi/plugins/step/</dest.folder>
   </properties>
   <parent>

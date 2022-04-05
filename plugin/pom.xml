@@ -8,7 +8,7 @@
   <url>http://maven.apache.org</url>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <goobi.version>22.02.2</goobi.version>
+    <goobi.version>22.03</goobi.version>
   </properties>
   <modules>
     <module>module-main</module>

@@ -21,7 +21,6 @@ import de.intranda.digiverso.normdataimporter.NormDataImporter;
 import de.intranda.digiverso.normdataimporter.model.MarcRecord;
 import de.intranda.digiverso.normdataimporter.model.MarcRecord.DatabaseUrl;
 import de.sub.goobi.config.ConfigPlugins;
-import de.sub.goobi.helper.exceptions.DAOException;
 import de.sub.goobi.helper.exceptions.SwapException;
 import de.sub.goobi.persistence.managers.VocabularyManager;
 import lombok.Data;
@@ -105,7 +104,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
                 checkMetadata(prefs, logical, entry);
             }
             step.getProzess().writeMetadataFile(ff);
-        } catch (ReadException | PreferencesException | WriteException | IOException | InterruptedException | SwapException | DAOException e) {
+        } catch (ReadException | PreferencesException | WriteException | IOException | SwapException e) {
             log.error(e);
         }
 
@@ -134,35 +133,36 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         if (!originalMetadata.isEmpty()) {
             for (Metadata md : originalMetadata) {
                 String value = md.getValue();
-                
+
                 // split the original metadata at delimiter to separate values
-                String[] splitValues = new String[]{value};
-                if (entry.metadataDelimiter != null && entry.metadataDelimiter.length() > 0 ) {
+                String[] splitValues = new String[] { value };
+                if (entry.metadataDelimiter != null && entry.metadataDelimiter.length() > 0) {
                     splitValues = value.split(entry.metadataDelimiter);
                 }
-                
+
                 // for each value generate new metadata
                 for (String splittedValue : splitValues) {
                     try {
-                    	// get normed value from configured vocabulary
+                        // get normed value from configured vocabulary
                         // newMetadata.setValue(getNormedValue(splittedValue.trim(), entry));
                         // Metadata newMetadata = new Metadata(prefs.getMetadataTypeByName(entry.getFieldTo()));
-                        
-                        List <Metadata> newListMd = getNormedMetadata(splittedValue.trim(), entry, prefs, md);
+
+                        List<Metadata> newListMd = getNormedMetadata(splittedValue.trim(), entry, prefs, md);
                         for (Metadata newMetadata : newListMd) {
-                        
+
                             //System.out.println(newMetadata);
-                            
+
                             // first run through all existing metadata to make sure it is not there already - to not have it twice
                             boolean newFieldExistsAlready = false;
                             for (Metadata mdTemp : docstruct.getAllMetadata()) {
-                                if (mdTemp.getType().getName().equals(newMetadata.getType().getName()) && mdTemp.getValue().equals(newMetadata.getValue())) {
+                                if (mdTemp.getType().getName().equals(newMetadata.getType().getName())
+                                        && mdTemp.getValue().equals(newMetadata.getValue())) {
                                     newFieldExistsAlready = true;
                                     break;
                                 }
-                                                                
+
                             }
-                            
+
                             //System.out.println(newMetadata);
                             if (!newFieldExistsAlready) {
                                 docstruct.addMetadata(newMetadata);
@@ -174,12 +174,11 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
                 }
             }
         }
-        
-        
+
         // remove duplicated fieldTo metadata if wanted
         if (entry.removeDuplicatedFieldTo) {
-            List<Metadata> temp = new ArrayList<Metadata>(docstruct.getAllMetadataByType(prefs.getMetadataTypeByName(entry.getFieldTo())));
-            List<String> knownList = new ArrayList<String>();
+            List<Metadata> temp = new ArrayList<>(docstruct.getAllMetadataByType(prefs.getMetadataTypeByName(entry.getFieldTo())));
+            List<String> knownList = new ArrayList<>();
             for (Metadata mdTemp : temp) {
                 String v = mdTemp.getValue();
                 if (knownList.contains(v)) {
@@ -191,67 +190,68 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         }
     }
 
-    private List <Metadata> getNormedMetadata(String value, ReplacementEntry entry, Prefs prefs, Metadata originalMetadata) throws MetadataTypeNotAllowedException {
-    	List <Metadata> listMd = new ArrayList<Metadata>();
-        
+    private List<Metadata> getNormedMetadata(String value, ReplacementEntry entry, Prefs prefs, Metadata originalMetadata)
+            throws MetadataTypeNotAllowedException {
+        List<Metadata> listMd = new ArrayList<>();
+
         // search for a record containing the search value
-    	List<VocabRecord> records =  VocabularyManager.findExactRecords(entry.getVocabulary(), value, entry.getContentSearch());
+        List<VocabRecord> records = VocabularyManager.findExactRecords(entry.getVocabulary(), value, entry.getContentSearch());
         if (records != null && !records.isEmpty()) {
             // first load the entire record again with all fields from vocabulary
-        	VocabRecord myRecord = VocabularyManager.getRecord(records.get(0).getVocabularyId(), records.get(0).getId());
-        	List<Field> fields = myRecord.getFields();
-            
+            VocabRecord myRecord = VocabularyManager.getRecord(records.get(0).getVocabularyId(), records.get(0).getId());
+            List<Field> fields = myRecord.getFields();
+
             // after record was loaded, get the normed value
             String fieldTo = entry.getFieldTo();
             String fieldToDynamic = entry.getFieldToDynamic();
             String contentAuthority = null;
             String contentAuthorityUri = null;
             String contentAuthorityValueUri = null;
-            
+
             // if a fieldToDynamic is defined, get it from the vocabulary record
             if (!StringUtils.isEmpty(fieldToDynamic)) {
-            	for (Field field : fields) {
+                for (Field field : fields) {
                     if (field.getLabel().equals(fieldToDynamic)) {
-                    	fieldTo = field.getValue();
+                        fieldTo = field.getValue();
                     }
                 }
             }
-            
+
             // run through all fields to collect the authority data
-        	for (Field field : fields) {
-        		if (field.getLabel().equals(entry.getContentAuthority())) {
-                	contentAuthority = field.getValue();
+            for (Field field : fields) {
+                if (field.getLabel().equals(entry.getContentAuthority())) {
+                    contentAuthority = field.getValue();
                 }
-        		if (field.getLabel().equals(entry.getContentAuthorityUri())) {
-                	contentAuthorityUri = field.getValue();
+                if (field.getLabel().equals(entry.getContentAuthorityUri())) {
+                    contentAuthorityUri = field.getValue();
                 }
-        		if (field.getLabel().equals(entry.getContentAuthorityValueUri())) {
-                	contentAuthorityValueUri = field.getValue();
+                if (field.getLabel().equals(entry.getContentAuthorityValueUri())) {
+                    contentAuthorityValueUri = field.getValue();
                 }
             }
-        	
-        	// try to get a better URL from Viaf from the original URL
-        	if (contentAuthorityValueUri != null && !contentAuthorityValueUri.isEmpty() && contentAuthorityUri.contains("https://viaf.org")) {
-        		contentAuthorityValueUri = getPreferedViafId(contentAuthorityValueUri);
-        	}
-           
+
+            // try to get a better URL from Viaf from the original URL
+            if (contentAuthorityValueUri != null && !contentAuthorityValueUri.isEmpty() && contentAuthorityUri.contains("https://viaf.org")) {
+                contentAuthorityValueUri = getPreferedViafId(contentAuthorityValueUri);
+            }
+
             // now run through all fields to find the right one where to put the replaced value to
             for (Field field : fields) {
                 if (field.getLabel().equals(entry.getContentReplace())) {
-                	
+
                     // split the content at delimiter to separate values
-                    String[] splitContent = new String[]{field.getValue()};
-                    if (entry.vocabularyDelimiter != null && entry.vocabularyDelimiter.length() > 0 ) {
+                    String[] splitContent = new String[] { field.getValue() };
+                    if (entry.vocabularyDelimiter != null && entry.vocabularyDelimiter.length() > 0) {
                         splitContent = field.getValue().split(entry.vocabularyDelimiter);
                     }
-                    
+
                     // now run through all split content of vocabulary field to create multiple metadata elements
                     for (String con : splitContent) {
                         Metadata md = new Metadata(prefs.getMetadataTypeByName(fieldTo));
                         md.setValue(con);
-                        
+
                         // if an authority value url is given in the vocabulary take this
-                        if(!StringUtils.isEmpty(contentAuthorityValueUri)) {
+                        if (!StringUtils.isEmpty(contentAuthorityValueUri)) {
                             md.setAuthorityID(contentAuthority);
                             md.setAuthorityURI(contentAuthorityUri);
                             md.setAuthorityValue(contentAuthorityValueUri);
@@ -261,58 +261,56 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
                             md.setAuthorityURI(originalMetadata.getAuthorityURI());
                             md.setAuthorityValue(originalMetadata.getAuthorityValue());
                         }
-                        listMd.add(md); 
+                        listMd.add(md);
                     }
                 }
             }
         }
-        
+
         // return the original value, if no record was found and if it should be duplicated
         if (listMd.isEmpty() && entry.duplicateIfMissing) {
-        	Metadata md = new Metadata(prefs.getMetadataTypeByName(entry.getFieldTo()));
-        	md.setValue(value);
-        	md.setAuthorityID(originalMetadata.getAuthorityID());
-        	md.setAuthorityURI(originalMetadata.getAuthorityURI());
-        	md.setAuthorityValue(originalMetadata.getAuthorityValue());
-        	listMd.add(md);
+            Metadata md = new Metadata(prefs.getMetadataTypeByName(entry.getFieldTo()));
+            md.setValue(value);
+            md.setAuthorityID(originalMetadata.getAuthorityID());
+            md.setAuthorityURI(originalMetadata.getAuthorityURI());
+            md.setAuthorityValue(originalMetadata.getAuthorityValue());
+            listMd.add(md);
         }
         return listMd;
     }
 
-    
-	public static void main(String[] args) {
-	    //YerushaMetadataReplacementPlugin ymrp = new YerushaMetadataReplacementPlugin();
-		//System.out.println(ymrp.getPreferedViafId("90722334"));
-		//System.out.println(ymrp.getPreferedViafId("http://viaf.org/viaf/90722334"));
-	}
-    
-	
-	/**
-	 * Method to get the URL for a viaf record from the preferred institution
-	 * 
-	 * @param oldUrl the main viaf entry url
-	 * @return String with the url of the individual preferred institution (e.g. from the LOC)
-	 */
-	public String getPreferedViafId(String oldId) {
-		MarcRecord recordToImport = NormDataImporter.getSingleMarcRecord("https://viaf.org/viaf/" + oldId + "/marc21.xml");
-		List<String> databases = new ArrayList<>();
-		databases.add("j9u");
-		databases.add("lc");
-		for (String database : databases) {
-			if (recordToImport!=null && recordToImport.getAuthorityDatabaseUrls() != null) {
-				for (DatabaseUrl url : recordToImport.getAuthorityDatabaseUrls()) {
-					if (url.getDatabaseCode().equalsIgnoreCase(database)) {
-						String result = url.getMarcRecordUrl();
-						result = result.substring(result.indexOf("processed"));
-						return result;
-					}
-				}
-			}
-		}
-		// if no better URL could be found give back the original again
-		return oldId;
-	}
-	
+    public static void main(String[] args) {
+        //YerushaMetadataReplacementPlugin ymrp = new YerushaMetadataReplacementPlugin();
+        //System.out.println(ymrp.getPreferedViafId("90722334"));
+        //System.out.println(ymrp.getPreferedViafId("http://viaf.org/viaf/90722334"));
+    }
+
+    /**
+     * Method to get the URL for a viaf record from the preferred institution
+     * 
+     * @param oldUrl the main viaf entry url
+     * @return String with the url of the individual preferred institution (e.g. from the LOC)
+     */
+    public String getPreferedViafId(String oldId) {
+        MarcRecord recordToImport = NormDataImporter.getSingleMarcRecord("https://viaf.org/viaf/" + oldId + "/marc21.xml");
+        List<String> databases = new ArrayList<>();
+        databases.add("j9u");
+        databases.add("lc");
+        for (String database : databases) {
+            if (recordToImport != null && recordToImport.getAuthorityDatabaseUrls() != null) {
+                for (DatabaseUrl url : recordToImport.getAuthorityDatabaseUrls()) {
+                    if (url.getDatabaseCode().equalsIgnoreCase(database)) {
+                        String result = url.getMarcRecordUrl();
+                        result = result.substring(result.indexOf("processed"));
+                        return result;
+                    }
+                }
+            }
+        }
+        // if no better URL could be found give back the original again
+        return oldId;
+    }
+
     @Override
     public String getPagePath() {
         return null;
@@ -371,5 +369,5 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
             vocabularyDelimiter = sub.getString("vocabularyDelimiter", "");
         }
     }
- 
+
 }

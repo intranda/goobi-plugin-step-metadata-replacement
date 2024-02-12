@@ -2,13 +2,13 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>de.intranda.goobi.plugins.step</groupId>
   <artifactId>metadata-replacement</artifactId>
-  <version>24.01.1</version>
+  <version>24.01.2</version>
   <packaging>pom</packaging>
   <name>yerusha-metadata-replacement</name>
   <url>http://maven.apache.org</url>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <goobi.version>24.01.1</goobi.version>
+    <goobi.version>24.01.2</goobi.version>
   </properties>
   <modules>
     <module>module-main</module>

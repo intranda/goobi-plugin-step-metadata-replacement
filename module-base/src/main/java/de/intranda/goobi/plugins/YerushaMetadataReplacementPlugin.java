@@ -1,10 +1,21 @@
 package de.intranda.goobi.plugins;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-
+import de.intranda.digiverso.normdataimporter.NormDataImporter;
+import de.intranda.digiverso.normdataimporter.model.MarcRecord;
+import de.intranda.digiverso.normdataimporter.model.MarcRecord.DatabaseUrl;
+import de.sub.goobi.config.ConfigPlugins;
+import de.sub.goobi.helper.exceptions.SwapException;
+import io.goobi.vocabulary.exchange.FieldDefinition;
+import io.goobi.vocabulary.exchange.TranslationInstance;
+import io.goobi.vocabulary.exchange.VocabularySchema;
+import io.goobi.workflow.api.vocabulary.VocabularyAPIManager;
+import io.goobi.workflow.api.vocabulary.helper.ExtendedFieldInstance;
+import io.goobi.workflow.api.vocabulary.helper.ExtendedVocabulary;
+import io.goobi.workflow.api.vocabulary.helper.ExtendedVocabularyRecord;
+import lombok.Data;
+import lombok.Getter;
+import lombok.extern.log4j.Log4j2;
+import net.xeoh.plugins.base.annotations.PluginImplementation;
 import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.configuration.SubnodeConfiguration;
 import org.apache.commons.lang3.StringUtils;
@@ -14,19 +25,6 @@ import org.goobi.production.enums.PluginReturnValue;
 import org.goobi.production.enums.PluginType;
 import org.goobi.production.enums.StepReturnValue;
 import org.goobi.production.plugin.interfaces.IStepPluginVersion2;
-import org.goobi.vocabulary.Field;
-import org.goobi.vocabulary.VocabRecord;
-
-import de.intranda.digiverso.normdataimporter.NormDataImporter;
-import de.intranda.digiverso.normdataimporter.model.MarcRecord;
-import de.intranda.digiverso.normdataimporter.model.MarcRecord.DatabaseUrl;
-import de.sub.goobi.config.ConfigPlugins;
-import de.sub.goobi.helper.exceptions.SwapException;
-import de.sub.goobi.persistence.managers.VocabularyManager;
-import lombok.Data;
-import lombok.Getter;
-import lombok.extern.log4j.Log4j2;
-import net.xeoh.plugins.base.annotations.PluginImplementation;
 import ugh.dl.DocStruct;
 import ugh.dl.Fileformat;
 import ugh.dl.Metadata;
@@ -35,6 +33,13 @@ import ugh.exceptions.MetadataTypeNotAllowedException;
 import ugh.exceptions.PreferencesException;
 import ugh.exceptions.ReadException;
 import ugh.exceptions.WriteException;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @PluginImplementation
 @Log4j2
@@ -135,7 +140,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
                 String value = md.getValue();
 
                 // split the original metadata at delimiter to separate values
-                String[] splitValues = new String[] { value };
+                String[] splitValues = new String[]{value};
                 if (entry.metadataDelimiter != null && entry.metadataDelimiter.length() > 0) {
                     splitValues = value.split(entry.metadataDelimiter);
                 }
@@ -194,78 +199,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
             throws MetadataTypeNotAllowedException {
         List<Metadata> listMd = new ArrayList<>();
 
-        // search for a record containing the search value
-        List<VocabRecord> records = VocabularyManager.findExactRecords(entry.getVocabulary(), value, entry.getContentSearch());
-        if (records != null && !records.isEmpty()) {
-            // first load the entire record again with all fields from vocabulary
-            VocabRecord myRecord = VocabularyManager.getRecord(records.get(0).getVocabularyId(), records.get(0).getId());
-            List<Field> fields = myRecord.getFields();
-
-            // after record was loaded, get the normed value
-            String fieldTo = entry.getFieldTo();
-            String fieldToDynamic = entry.getFieldToDynamic();
-            String contentAuthority = null;
-            String contentAuthorityUri = null;
-            String contentAuthorityValueUri = null;
-
-            // if a fieldToDynamic is defined, get it from the vocabulary record
-            if (!StringUtils.isEmpty(fieldToDynamic)) {
-                for (Field field : fields) {
-                    if (field.getLabel().equals(fieldToDynamic)) {
-                        fieldTo = field.getValue();
-                    }
-                }
-            }
-
-            // run through all fields to collect the authority data
-            for (Field field : fields) {
-                if (field.getLabel().equals(entry.getContentAuthority())) {
-                    contentAuthority = field.getValue();
-                }
-                if (field.getLabel().equals(entry.getContentAuthorityUri())) {
-                    contentAuthorityUri = field.getValue();
-                }
-                if (field.getLabel().equals(entry.getContentAuthorityValueUri())) {
-                    contentAuthorityValueUri = field.getValue();
-                }
-            }
-
-            // try to get a better URL from Viaf from the original URL
-            if (contentAuthorityValueUri != null && !contentAuthorityValueUri.isEmpty() && contentAuthorityUri.contains("https://viaf.org")) {
-                contentAuthorityValueUri = getPreferedViafId(contentAuthorityValueUri);
-            }
-
-            // now run through all fields to find the right one where to put the replaced value to
-            for (Field field : fields) {
-                if (field.getLabel().equals(entry.getContentReplace())) {
-
-                    // split the content at delimiter to separate values
-                    String[] splitContent = new String[] { field.getValue() };
-                    if (entry.vocabularyDelimiter != null && entry.vocabularyDelimiter.length() > 0) {
-                        splitContent = field.getValue().split(entry.vocabularyDelimiter);
-                    }
-
-                    // now run through all split content of vocabulary field to create multiple metadata elements
-                    for (String con : splitContent) {
-                        Metadata md = new Metadata(prefs.getMetadataTypeByName(fieldTo));
-                        md.setValue(con);
-
-                        // if an authority value url is given in the vocabulary take this
-                        if (!StringUtils.isEmpty(contentAuthorityValueUri)) {
-                            md.setAuthorityID(contentAuthority);
-                            md.setAuthorityURI(contentAuthorityUri);
-                            md.setAuthorityValue(contentAuthorityValueUri);
-                        } else {
-                            // if not authority is contained in the vocabulary take it from the original record
-                            md.setAuthorityID(originalMetadata.getAuthorityID());
-                            md.setAuthorityURI(originalMetadata.getAuthorityURI());
-                            md.setAuthorityValue(originalMetadata.getAuthorityValue());
-                        }
-                        listMd.add(md);
-                    }
-                }
-            }
-        }
+        performVocabularyBasedMetadataUpdates(listMd, value, entry, prefs, originalMetadata);
 
         // return the original value, if no record was found and if it should be duplicated
         if (listMd.isEmpty() && entry.duplicateIfMissing) {
@@ -279,6 +213,90 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         return listMd;
     }
 
+    private void performVocabularyBasedMetadataUpdates(List<Metadata> resultList, String value, ReplacementEntry entry, Prefs prefs, Metadata originalMetadata) throws MetadataTypeNotAllowedException {
+        // search for a record containing the search value
+        ExtendedVocabulary vocabulary = VocabularyAPIManager.getInstance().vocabularies().findByName(entry.getVocabulary());
+        VocabularySchema schema = VocabularyAPIManager.getInstance().vocabularySchemas().get(vocabulary.getSchemaId());
+        Optional<FieldDefinition> searchField = schema.getDefinitions().stream()
+                .filter(d -> d.getName().equals(entry.getContentSearch()))
+                .findFirst();
+
+        if (searchField.isEmpty()) {
+            return;
+        }
+        List<ExtendedVocabularyRecord> results = VocabularyAPIManager.getInstance().vocabularyRecords().list(vocabulary.getId())
+                .search(searchField.get().getId() + ":" + value)
+                .all()
+                .request()
+                .getContent()
+                .stream()
+                .filter(r -> isExactMatch(r, searchField.get(), value))
+                .collect(Collectors.toList());
+
+        if (results.isEmpty()) {
+            return;
+        }
+
+        if (results.size() != 1) {
+            log.warn("No unique result found, using first result");
+        }
+
+        ExtendedVocabularyRecord result = results.get(0);
+
+        // after record was loaded, get the normed value
+        String fieldTo = entry.getFieldTo();
+        String fieldToDynamic = entry.getFieldToDynamic();
+
+        // if a fieldToDynamic is defined, get it from the vocabulary record
+        if (!StringUtils.isEmpty(fieldToDynamic)) {
+            fieldTo = result.getFieldValueForDefinitionName(fieldToDynamic).orElse(fieldTo);
+        }
+
+        String contentAuthority = result.getFieldValueForDefinitionName(entry.getContentAuthority()).orElse(null);
+        String contentAuthorityUri = result.getFieldValueForDefinitionName(entry.getContentAuthorityUri()).orElse(null);
+        String contentAuthorityValueUri = result.getFieldValueForDefinitionName(entry.getContentAuthorityValueUri()).orElse(null);
+
+        // try to get a better URL from Viaf from the original URL
+        if (contentAuthorityValueUri != null && !contentAuthorityValueUri.isEmpty() && contentAuthorityUri.contains("https://viaf.org")) {
+            contentAuthorityValueUri = getPreferedViafId(contentAuthorityValueUri);
+        }
+
+        // now run through all fields to find the right one where to put the replaced value to
+        Optional<ExtendedFieldInstance> replacementField = result.getFieldForDefinitionName(entry.getContentReplace());
+        if (replacementField.isPresent()) {
+            List<String> replacementValues = replacementField.get().getExtendedValues().stream()
+                    .flatMap(v -> v.getTranslations().stream())
+                    .map(TranslationInstance::getValue)
+                    .collect(Collectors.toList());
+
+            for (String replacementValue : replacementValues) {
+                Metadata md = new Metadata(prefs.getMetadataTypeByName(fieldTo));
+                md.setValue(replacementValue);
+
+                // if an authority value url is given in the vocabulary take this
+                if (!StringUtils.isEmpty(contentAuthorityValueUri)) {
+                    md.setAuthorityID(contentAuthority);
+                    md.setAuthorityURI(contentAuthorityUri);
+                    md.setAuthorityValue(contentAuthorityValueUri);
+                } else {
+                    // if not authority is contained in the vocabulary take it from the original record
+                    md.setAuthorityID(originalMetadata.getAuthorityID());
+                    md.setAuthorityURI(originalMetadata.getAuthorityURI());
+                    md.setAuthorityValue(originalMetadata.getAuthorityValue());
+                }
+                resultList.add(md);
+            }
+        }
+    }
+
+    private boolean isExactMatch(ExtendedVocabularyRecord r, FieldDefinition fieldDefinition, String value) {
+        return r.getFieldForDefinition(fieldDefinition)
+                .map(extendedFieldInstance -> extendedFieldInstance.getValues().stream()
+                        .flatMap(v -> v.getTranslations().stream())
+                        .anyMatch(t -> value.equals(t.getValue())))
+                .orElse(false);
+    }
+
     public static void main(String[] args) {
         //YerushaMetadataReplacementPlugin ymrp = new YerushaMetadataReplacementPlugin();
         //System.out.println(ymrp.getPreferedViafId("90722334"));
@@ -287,7 +305,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
 
     /**
      * Method to get the URL for a viaf record from the preferred institution
-     * 
+     *
      * @param oldUrl the main viaf entry url
      * @return String with the url of the individual preferred institution (e.g. from the LOC)
      */

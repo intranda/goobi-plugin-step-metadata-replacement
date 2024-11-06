@@ -36,6 +36,8 @@ import net.xeoh.plugins.base.annotations.PluginImplementation;
 import ugh.dl.DocStruct;
 import ugh.dl.Fileformat;
 import ugh.dl.Metadata;
+import ugh.dl.MetadataGroup;
+import ugh.dl.MetadataGroupType;
 import ugh.dl.Prefs;
 import ugh.exceptions.MetadataTypeNotAllowedException;
 import ugh.exceptions.PreferencesException;
@@ -115,7 +117,92 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
     }
 
     private void checkMetadata(Prefs prefs, DocStruct docstruct, ReplacementEntry entry) {
+
+        if (StringUtils.isNotBlank(entry.getMetadataGroup())) {
+            changeMetadataGroups(prefs, docstruct, entry);
+        } else {
+            changeMetadata(prefs, docstruct, entry);
+        }
+    }
+
+    private void changeMetadataGroups(Prefs prefs, DocStruct ds, ReplacementEntry entry) {
+
+        MetadataGroupType mgt = prefs.getMetadataGroupTypeByName(entry.getMetadataGroup());
+
+        // run through all configured groups
+        for (MetadataGroup group : ds.getAllMetadataGroupsByType(mgt)) {
+
+            // collect original metadata and generated fields
+            List<Metadata> originalMetadata = new ArrayList<>();
+            List<Metadata> generatedMetadataList = new ArrayList<>();
+            for (Metadata md : group.getMetadataList()) {
+                if (md.getType().getName().equals(entry.getFieldFrom())) {
+                    originalMetadata.add(md);
+                } else if (md.getType().getName().equals(entry.getFieldTo())) {
+                    generatedMetadataList.add(md);
+                }
+            }
+
+            // remove old generated metadata
+            if (entry.deleteExistingFieldTo && !generatedMetadataList.isEmpty()) {
+                for (Metadata md : generatedMetadataList) {
+                    group.removeMetadata(md, true);
+                }
+            }
+            for (Metadata md : originalMetadata) {
+                String value = md.getValue();
+
+                // split the original metadata at delimiter to separate values
+                String[] splitValues = new String[] { value };
+                if (entry.metadataDelimiter != null && entry.metadataDelimiter.length() > 0) {
+                    splitValues = value.split(entry.metadataDelimiter);
+                }
+                // for each value generate new metadata
+                for (String splittedValue : splitValues) {
+                    try {
+                        // get normed value from configured vocabulary
+
+                        List<Metadata> newListMd = getNormedMetadata(splittedValue.trim(), entry, prefs, md);
+                        for (Metadata newMetadata : newListMd) {
+
+                            // first run through all existing metadata to make sure it is not there already - to not have it twice
+                            boolean newFieldExistsAlready = false;
+                            for (Metadata mdTemp : group.getMetadataList()) {
+                                if (mdTemp.getType().getName().equals(newMetadata.getType().getName())
+                                        && mdTemp.getValue().equals(newMetadata.getValue())) {
+                                    newFieldExistsAlready = true;
+                                    break;
+                                }
+                            }
+                            if (!newFieldExistsAlready) {
+                                group.addMetadata(newMetadata);
+                            }
+                        }
+                    } catch (MetadataTypeNotAllowedException e) {
+                        log.error(e);
+                    }
+                }
+            }
+
+            // remove duplicated fieldTo metadata if wanted
+            if (entry.removeDuplicatedFieldTo) {
+                List<Metadata> temp = new ArrayList<>(group.getMetadataByType(entry.getFieldTo()));
+                List<String> knownList = new ArrayList<>();
+                for (Metadata mdTemp : temp) {
+                    String v = mdTemp.getValue();
+                    if (knownList.contains(v)) {
+                        group.removeMetadata(mdTemp, true);
+                    } else {
+                        knownList.add(v);
+                    }
+                }
+            }
+        }
+    }
+
+    private void changeMetadata(Prefs prefs, DocStruct docstruct, ReplacementEntry entry) {
         // find original metadata and generated metadata from previous runs
+
         List<Metadata> originalMetadata = new ArrayList<>();
         List<Metadata> generatedMetadataList = new ArrayList<>();
         for (Metadata md : docstruct.getAllMetadata()) {
@@ -354,6 +441,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         private String fieldFrom;
         private String fieldTo;
         private String fieldToDynamic;
+        private String metadataGroup;
         private String vocabulary;
         private String contentSearch;
         private String contentReplace;
@@ -381,6 +469,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
             removeDuplicatedFieldTo = sub.getBoolean("removeDuplicatedFieldTo", false);
             metadataDelimiter = sub.getString("metadataDelimiter", "");
             vocabularyDelimiter = sub.getString("vocabularyDelimiter", "");
+            metadataGroup = sub.getString("metadataGroup", null);
         }
     }
 

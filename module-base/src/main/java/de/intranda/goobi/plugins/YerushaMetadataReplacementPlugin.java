@@ -1,5 +1,22 @@
 package de.intranda.goobi.plugins;
 
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
+
+import org.apache.commons.configuration.HierarchicalConfiguration;
+import org.apache.commons.configuration.SubnodeConfiguration;
+import org.apache.commons.lang3.StringUtils;
+import org.goobi.beans.Step;
+import org.goobi.production.enums.PluginGuiType;
+import org.goobi.production.enums.PluginReturnValue;
+import org.goobi.production.enums.PluginType;
+import org.goobi.production.enums.StepReturnValue;
+import org.goobi.production.plugin.interfaces.IStepPluginVersion2;
+
 import de.intranda.digiverso.normdataimporter.NormDataImporter;
 import de.intranda.digiverso.normdataimporter.model.MarcRecord;
 import de.intranda.digiverso.normdataimporter.model.MarcRecord.DatabaseUrl;
@@ -16,35 +33,22 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import net.xeoh.plugins.base.annotations.PluginImplementation;
-import org.apache.commons.configuration.HierarchicalConfiguration;
-import org.apache.commons.configuration.SubnodeConfiguration;
-import org.apache.commons.lang3.StringUtils;
-import org.goobi.beans.Step;
-import org.goobi.production.enums.PluginGuiType;
-import org.goobi.production.enums.PluginReturnValue;
-import org.goobi.production.enums.PluginType;
-import org.goobi.production.enums.StepReturnValue;
-import org.goobi.production.plugin.interfaces.IStepPluginVersion2;
 import ugh.dl.DocStruct;
 import ugh.dl.Fileformat;
 import ugh.dl.Metadata;
+import ugh.dl.MetadataGroup;
+import ugh.dl.MetadataGroupType;
 import ugh.dl.Prefs;
 import ugh.exceptions.MetadataTypeNotAllowedException;
 import ugh.exceptions.PreferencesException;
 import ugh.exceptions.ReadException;
 import ugh.exceptions.WriteException;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
 @PluginImplementation
 @Log4j2
 public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
 
+    private static final long serialVersionUID = -5817542298898922714L;
     @Getter
     private PluginGuiType pluginGuiType = PluginGuiType.NONE;
     @Getter
@@ -80,11 +84,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
 
     @Override
     public boolean execute() {
-        PluginReturnValue ret = run();
-        if (ret.equals(PluginReturnValue.FINISH)) {
-            return true;
-        }
-        return false;
+        return PluginReturnValue.FINISH.equals(run());
     }
 
     @Override
@@ -117,7 +117,92 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
     }
 
     private void checkMetadata(Prefs prefs, DocStruct docstruct, ReplacementEntry entry) {
+
+        if (StringUtils.isNotBlank(entry.getMetadataGroup())) {
+            changeMetadataGroups(prefs, docstruct, entry);
+        } else {
+            changeMetadata(prefs, docstruct, entry);
+        }
+    }
+
+    private void changeMetadataGroups(Prefs prefs, DocStruct ds, ReplacementEntry entry) {
+
+        MetadataGroupType mgt = prefs.getMetadataGroupTypeByName(entry.getMetadataGroup());
+
+        // run through all configured groups
+        for (MetadataGroup group : ds.getAllMetadataGroupsByType(mgt)) {
+
+            // collect original metadata and generated fields
+            List<Metadata> originalMetadata = new ArrayList<>();
+            List<Metadata> generatedMetadataList = new ArrayList<>();
+            for (Metadata md : group.getMetadataList()) {
+                if (md.getType().getName().equals(entry.getFieldFrom())) {
+                    originalMetadata.add(md);
+                } else if (md.getType().getName().equals(entry.getFieldTo())) {
+                    generatedMetadataList.add(md);
+                }
+            }
+
+            // remove old generated metadata
+            if (entry.deleteExistingFieldTo && !generatedMetadataList.isEmpty()) {
+                for (Metadata md : generatedMetadataList) {
+                    group.removeMetadata(md, true);
+                }
+            }
+            for (Metadata md : originalMetadata) {
+                String value = md.getValue();
+
+                // split the original metadata at delimiter to separate values
+                String[] splitValues = new String[] { value };
+                if (entry.metadataDelimiter != null && entry.metadataDelimiter.length() > 0) {
+                    splitValues = value.split(entry.metadataDelimiter);
+                }
+                // for each value generate new metadata
+                for (String splittedValue : splitValues) {
+                    try {
+                        // get normed value from configured vocabulary
+
+                        List<Metadata> newListMd = getNormedMetadata(splittedValue.trim(), entry, prefs, md);
+                        for (Metadata newMetadata : newListMd) {
+
+                            // first run through all existing metadata to make sure it is not there already - to not have it twice
+                            boolean newFieldExistsAlready = false;
+                            for (Metadata mdTemp : group.getMetadataList()) {
+                                if (mdTemp.getType().getName().equals(newMetadata.getType().getName())
+                                        && mdTemp.getValue().equals(newMetadata.getValue())) {
+                                    newFieldExistsAlready = true;
+                                    break;
+                                }
+                            }
+                            if (!newFieldExistsAlready) {
+                                group.addMetadata(newMetadata);
+                            }
+                        }
+                    } catch (MetadataTypeNotAllowedException e) {
+                        log.error(e);
+                    }
+                }
+            }
+
+            // remove duplicated fieldTo metadata if wanted
+            if (entry.removeDuplicatedFieldTo) {
+                List<Metadata> temp = new ArrayList<>(group.getMetadataByType(entry.getFieldTo()));
+                List<String> knownList = new ArrayList<>();
+                for (Metadata mdTemp : temp) {
+                    String v = mdTemp.getValue();
+                    if (knownList.contains(v)) {
+                        group.removeMetadata(mdTemp, true);
+                    } else {
+                        knownList.add(v);
+                    }
+                }
+            }
+        }
+    }
+
+    private void changeMetadata(Prefs prefs, DocStruct docstruct, ReplacementEntry entry) {
         // find original metadata and generated metadata from previous runs
+
         List<Metadata> originalMetadata = new ArrayList<>();
         List<Metadata> generatedMetadataList = new ArrayList<>();
         for (Metadata md : docstruct.getAllMetadata()) {
@@ -140,7 +225,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
                 String value = md.getValue();
 
                 // split the original metadata at delimiter to separate values
-                String[] splitValues = new String[]{value};
+                String[] splitValues = new String[] { value };
                 if (entry.metadataDelimiter != null && entry.metadataDelimiter.length() > 0) {
                     splitValues = value.split(entry.metadataDelimiter);
                 }
@@ -149,13 +234,9 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
                 for (String splittedValue : splitValues) {
                     try {
                         // get normed value from configured vocabulary
-                        // newMetadata.setValue(getNormedValue(splittedValue.trim(), entry));
-                        // Metadata newMetadata = new Metadata(prefs.getMetadataTypeByName(entry.getFieldTo()));
 
                         List<Metadata> newListMd = getNormedMetadata(splittedValue.trim(), entry, prefs, md);
                         for (Metadata newMetadata : newListMd) {
-
-                            //System.out.println(newMetadata);
 
                             // first run through all existing metadata to make sure it is not there already - to not have it twice
                             boolean newFieldExistsAlready = false;
@@ -168,7 +249,6 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
 
                             }
 
-                            //System.out.println(newMetadata);
                             if (!newFieldExistsAlready) {
                                 docstruct.addMetadata(newMetadata);
                             }
@@ -213,25 +293,29 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         return listMd;
     }
 
-    private void performVocabularyBasedMetadataUpdates(List<Metadata> resultList, String value, ReplacementEntry entry, Prefs prefs, Metadata originalMetadata) throws MetadataTypeNotAllowedException {
+    private void performVocabularyBasedMetadataUpdates(List<Metadata> resultList, String value, ReplacementEntry entry, Prefs prefs,
+            Metadata originalMetadata) throws MetadataTypeNotAllowedException {
         // search for a record containing the search value
         ExtendedVocabulary vocabulary = VocabularyAPIManager.getInstance().vocabularies().findByName(entry.getVocabulary());
         VocabularySchema schema = VocabularyAPIManager.getInstance().vocabularySchemas().get(vocabulary.getSchemaId());
-        Optional<FieldDefinition> searchField = schema.getDefinitions().stream()
+        Optional<FieldDefinition> searchField = schema.getDefinitions()
+                .stream()
                 .filter(d -> d.getName().equals(entry.getContentSearch()))
                 .findFirst();
 
         if (searchField.isEmpty()) {
             return;
         }
-        List<ExtendedVocabularyRecord> results = VocabularyAPIManager.getInstance().vocabularyRecords().list(vocabulary.getId())
+        List<ExtendedVocabularyRecord> results = VocabularyAPIManager.getInstance()
+                .vocabularyRecords()
+                .list(vocabulary.getId())
                 .search(searchField.get().getId() + ":" + value)
                 .all()
                 .request()
                 .getContent()
                 .stream()
                 .filter(r -> isExactMatch(r, searchField.get(), value))
-                .collect(Collectors.toList());
+                .toList();
 
         if (results.isEmpty()) {
             return;
@@ -264,10 +348,12 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
         // now run through all fields to find the right one where to put the replaced value to
         Optional<ExtendedFieldInstance> replacementField = result.getFieldForDefinitionName(entry.getContentReplace());
         if (replacementField.isPresent()) {
-            List<String> replacementValues = replacementField.get().getExtendedValues().stream()
+            List<String> replacementValues = replacementField.get()
+                    .getExtendedValues()
+                    .stream()
                     .flatMap(v -> v.getTranslations().stream())
                     .map(TranslationInstance::getValue)
-                    .collect(Collectors.toList());
+                    .toList();
 
             for (String replacementValue : replacementValues) {
                 Metadata md = new Metadata(prefs.getMetadataTypeByName(fieldTo));
@@ -291,16 +377,11 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
 
     private boolean isExactMatch(ExtendedVocabularyRecord r, FieldDefinition fieldDefinition, String value) {
         return r.getFieldForDefinition(fieldDefinition)
-                .map(extendedFieldInstance -> extendedFieldInstance.getValues().stream()
+                .map(extendedFieldInstance -> extendedFieldInstance.getValues()
+                        .stream()
                         .flatMap(v -> v.getTranslations().stream())
                         .anyMatch(t -> value.equals(t.getValue())))
                 .orElse(false);
-    }
-
-    public static void main(String[] args) {
-        //YerushaMetadataReplacementPlugin ymrp = new YerushaMetadataReplacementPlugin();
-        //System.out.println(ymrp.getPreferedViafId("90722334"));
-        //System.out.println(ymrp.getPreferedViafId("http://viaf.org/viaf/90722334"));
     }
 
     /**
@@ -336,12 +417,13 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
 
     @Override
     public HashMap<String, StepReturnValue> validate() {
-        return null;
+        return null; //NOSONAR
     }
 
     @Data
-    private class ReplacementConfiguration {
+    private class ReplacementConfiguration implements Serializable {
 
+        private static final long serialVersionUID = 3079270612916051314L;
         private List<ReplacementEntry> entryList = new ArrayList<>();
 
         public ReplacementConfiguration(SubnodeConfiguration sub) {
@@ -354,10 +436,12 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
     }
 
     @Data
-    private class ReplacementEntry {
+    private class ReplacementEntry implements Serializable {
+        private static final long serialVersionUID = -5685314086466688260L;
         private String fieldFrom;
         private String fieldTo;
         private String fieldToDynamic;
+        private String metadataGroup;
         private String vocabulary;
         private String contentSearch;
         private String contentReplace;
@@ -385,6 +469,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
             removeDuplicatedFieldTo = sub.getBoolean("removeDuplicatedFieldTo", false);
             metadataDelimiter = sub.getString("metadataDelimiter", "");
             vocabularyDelimiter = sub.getString("vocabularyDelimiter", "");
+            metadataGroup = sub.getString("metadataGroup", null);
         }
     }
 

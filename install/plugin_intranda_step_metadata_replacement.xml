@@ -53,6 +53,10 @@
 			<!-- if the same value in fieldTo exists more than once remove the duplicates -->
 			<removeDuplicatedFieldTo>false</removeDuplicatedFieldTo>
 			
+            <!-- Configure group name, if original field and replacement are within a metadata group -->
+            <!-- 
+            <metadataGroup></metadataGroup>
+             -->
 		</entry>
 	</config>
 </config_plugin>

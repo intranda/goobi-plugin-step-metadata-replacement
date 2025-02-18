@@ -3,7 +3,7 @@
   <parent>
     <groupId>io.goobi.workflow.plugin</groupId>
     <artifactId>plugin-step-metadata-replacement</artifactId>
-    <version>24.13-SNAPSHOT</version>
+    <version>25.02-SNAPSHOT</version>
   </parent>
   <artifactId>plugin-step-metadata-replacement-base</artifactId>
   <packaging>jar</packaging>

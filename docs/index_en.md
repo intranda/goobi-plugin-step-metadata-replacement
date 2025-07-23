@@ -96,7 +96,7 @@ The parameters within this configuration file have the following meanings:
 | Value | Description |
 | :--- | :--- |
 | `project` | This parameter determines for which project the current block `<config>` is to apply. The name of the project is used here. This parameter can occur several times per `<config>` block. |
-| `step` | This parameter controls for which work steps the block &lt;config&gt; should apply. The name of the work step is used here. This parameter can occur several times per `<config>` block. |
+| `step` | This parameter controls for which work steps the block `<config>` should apply. The name of the work step is used here. This parameter can occur several times per `<config>` block. |
 | `entry` | Several `entry` blocks for replacement rules can be defined within a configuration block. |
 | `fieldFrom` | This parameter determines which metadata for a replacement should be used as the starting field. |
 | `fieldTo` | This parameter determines which metadata should be used as the target field for a replacement. |

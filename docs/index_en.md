@@ -3,6 +3,10 @@ title: Automatic enrichment of metadata from own vocabularies
 identifier: intranda_step_metadata_replacement
 published: true
 description: This plug-in allows you to automatically enrich individual metadata with information from Goobi workflow's vocabulary management
+keywords:
+    - Goobi workflow
+    - Plugin
+    - Step Plugin
 ---
 ## Introduction
 This plug-in allows you to automatically enrich metadata within the METS files of Goobi workflow with content from controlled vocabularies managed within Goobi.Details

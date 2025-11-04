@@ -3,6 +3,10 @@ title: Automatische Anreicherung von Metadaten aus eigenen Vokabularen
 identifier: intranda_step_metadata_replacement
 published: true
 description: Dieses Plugin erlaubt eine automatische Anreicherung von einzelnen Metadaten mit Informationen aus dem Vokabular Management von Goobi workflow
+keywords:
+    - Goobi workflow
+    - Plugin
+    - Step Plugin
 ---
 ## Einführung
 Dieses Plugin erlaubt eine automatische Anreicherung von Metadaten innerhalb der METS-Dateien von Goobi workflow mit Inhalten aus innerhalb von Goobi verwalteten kontrollierten Vokabularen.

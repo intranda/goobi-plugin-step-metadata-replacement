@@ -26,7 +26,7 @@ Die Konfiguration des Plugins findet innerhalb dessen Konfigurationsdatei `intra
 ```
 
 ## Überblick und Funktionsweise
-Dieses Plugin kann sehr granular konfiguriert werden und arbeitet intensiv mit den innerhalb von Goobi verwalteten Vokabularen zusammen. Anhand des des folgenden Beispiels läßt sich die Funktionsweise gut aufzeigen:
+Dieses Plugin kann sehr granular konfiguriert werden und arbeitet intensiv mit den innerhalb von Goobi verwalteten Vokabularen zusammen. Anhand des folgenden Beispiels läßt sich die Funktionsweise gut aufzeigen:
 
 Innerhalb der Metadaten liegen wenige Informationen über Erscheinungsorte vor. Eine uneinheitliche Schreibweisen der Ortsnamen und fehlende Verlinkungen zu einer Normdatenbank lassen Informationen vermissen und erlauben keine Nutzung von Linked-Open-Data. Beispielhaft könnten die Metadaten für den Erscheinungsort `London` folgendermaßen aussehen:
 

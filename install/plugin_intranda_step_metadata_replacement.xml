@@ -30,11 +30,13 @@
 			
 			<!-- if multiple metadata elements are stored in one metadata field 
 				and shall all be used to be replaced, define a delimiter (e.g. ';' or '#') here
-				if no delimiter is defined the whole value of the metadata will be used -->
+				if no delimiter is defined the whole value of the metadata will be used.
+				Regular expression: write '\|' for a literal '|'. -->
 			<metadataDelimiter>;</metadataDelimiter>
 			
-			<!-- if multiple records shall be created using a delimiter (e.g. ';' or '#') define it here
-				if no delimiter is defined just one record will be created -->
+			<!-- if one vocabulary value contains several values, define their delimiter (e.g. '#');
+				each part is written as its own metadata. Regular expression: write '\|' for a literal '|'.
+				Without a delimiter the whole vocabulary value is written as one metadata. -->
 			<vocabularyDelimiter>#</vocabularyDelimiter>
 
 			<!-- the content in which vocabulary fields shall be taken to fill the 

@@ -77,6 +77,16 @@ The configuration of the plugin is structured as follows:
                 into fieldTo -->
             <contentReplace>corrected value</contentReplace>
 
+            <!-- if one metadata value contains several values to replace, define their delimiter
+                (e.g. ';' or '#'); without a delimiter the whole value is used.
+                Regular expression: write '\|' for a literal '|'. -->
+            <metadataDelimiter>;</metadataDelimiter>
+
+            <!-- if one vocabulary value contains several values, define their delimiter (e.g. '#');
+                each part is written as its own metadata. Regular expression: write '\|' for a literal '|'.
+                Without a delimiter the whole vocabulary value is written as one metadata. -->
+            <vocabularyDelimiter>#</vocabularyDelimiter>
+
             <!-- the content in which vocabulary fields shall be taken to fill the
                 authority information for the replaced record -->
             <contentAuthority>authority</contentAuthority>
@@ -87,8 +97,16 @@ The configuration of the plugin is structured as follows:
                 shall the original value be duplicated then? -->
             <duplicateIfMissing>false</duplicateIfMissing>
 
+            <!-- define if existing metadata in fieldTo shall be deleted before adding new fields -->
+            <deleteExistingFieldTo>true</deleteExistingFieldTo>
+
             <!-- if the same value in fieldTo exists more than once remove the duplicates -->
             <removeDuplicatedFieldTo>false</removeDuplicatedFieldTo>
+
+            <!-- configure the group name, if fieldFrom and fieldTo are within a metadata group -->
+            <!--
+            <metadataGroup></metadataGroup>
+            -->
 
         </entry>
     </config>
@@ -104,15 +122,19 @@ The parameters within this configuration file have the following meanings:
 | `entry` | Several `entry` blocks for replacement rules can be defined within a configuration block. |
 | `fieldFrom` | This parameter determines which metadata for a replacement should be used as the starting field. |
 | `fieldTo` | This parameter determines which metadata should be used as the target field for a replacement. |
-| `fieldDynamic` | If the target field should also be taken from the vocabulary record, the field within the vocabulary can be specified here. |
+| `fieldToDynamic` | If the target field should also be taken from the vocabulary record, the field within the vocabulary can be specified here. |
 | `vocabulary` | Enter the name of the vocabulary in Goobi workflow here. |
 | `contentSearch` | Here you define which field of the vocabulary is to be used to search for the value from the source field. |
 | `contentReplace` | Define here which field of the vocabulary should be used to replace the value from the source field. |
+| `metadataDelimiter` | If one value of the source field contains several values, define their delimiter here (e.g. `;`). Each part is looked up and replaced separately. The value is a regular expression, so characters like `|` or `.` must be escaped (`\|`). Without a delimiter the whole value is used. |
+| `vocabularyDelimiter` | If one value of the vocabulary field `contentReplace` contains several values, define their delimiter here (e.g. `#`). Each part is written as its own metadata with the same authority information; surrounding spaces are removed and empty parts skipped. The value is a regular expression, like `metadataDelimiter`. Without a delimiter the whole vocabulary value is written as one metadata. |
 | `contentAuthority` | If standard data are to be transferred, the field within the vocabulary for the authority can be defined here. |
 | `contentAuthorityUri` | If standard data are to be transferred, the field within the vocabulary for the Authority URI can be defined here. |
 | `contentAuthorityValueUri` | If standard data are to be transferred, the field within the vocabulary for the data record can be defined here. |
 | `duplicateIfMissing` | If the original value is to be used if no match is found within the vocabulary, this value must be set to `true`. |
+| `deleteExistingFieldTo` | If set to `true` (default), existing metadata of the target field are deleted before the new values are written. |
 | `removeDuplicatedFieldTo` | If a target field with the same content exists several times, this parameter can be used to specify that duplicates are to be removed. Only the field type and value are checked. Persons, corporate bodies, metadata groups and authority information are not taken into account. |
+| `metadataGroup` | If the source and target fields are within a metadata group, enter the name of the group here. |
 
 To put the plugin into operation, it must be activated for one or more desired tasks in the workflow. This is done as shown in the following screenshot by selecting the `intranda_step_metadata_replacement` plugin from the list of installed plugins.
 

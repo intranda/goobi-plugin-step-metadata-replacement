@@ -77,6 +77,16 @@ Die Konfiguration des Plugins ist folgendermaßen aufgebaut:
                 into fieldTo -->
             <contentReplace>corrected value</contentReplace>
 
+            <!-- if one metadata value contains several values to replace, define their delimiter
+                (e.g. ';' or '#'); without a delimiter the whole value is used.
+                Regular expression: write '\|' for a literal '|'. -->
+            <metadataDelimiter>;</metadataDelimiter>
+
+            <!-- if one vocabulary value contains several values, define their delimiter (e.g. '#');
+                each part is written as its own metadata. Regular expression: write '\|' for a literal '|'.
+                Without a delimiter the whole vocabulary value is written as one metadata. -->
+            <vocabularyDelimiter>#</vocabularyDelimiter>
+
             <!-- the content in which vocabulary fields shall be taken to fill the
                 authority information for the replaced record -->
             <contentAuthority>authority</contentAuthority>
@@ -87,8 +97,16 @@ Die Konfiguration des Plugins ist folgendermaßen aufgebaut:
                 shall the original value be duplicated then? -->
             <duplicateIfMissing>false</duplicateIfMissing>
 
+            <!-- define if existing metadata in fieldTo shall be deleted before adding new fields -->
+            <deleteExistingFieldTo>true</deleteExistingFieldTo>
+
             <!-- if the same value in fieldTo exists more than once remove the duplicates -->
             <removeDuplicatedFieldTo>false</removeDuplicatedFieldTo>
+
+            <!-- configure the group name, if fieldFrom and fieldTo are within a metadata group -->
+            <!--
+            <metadataGroup></metadataGroup>
+            -->
         
         </entry>
     </config>
@@ -104,15 +122,19 @@ Die Parameter innerhalb dieser Konfigurationsdatei haben folgende Bedeutungen:
 | `entry` | Innerhalb eines Konfigurationsblocks können mehrere `entry`-Blöcke für Ersetzungsregeln definiert werden. |
 | `fieldFrom` | Dieser Parameter legt fest, welches Metadatum für eine Ersetzung als Ausgangsfeld genutzt werden soll. |
 | `fieldTo` | Dieser Parameter legt fest, welches Metadatum für eine Ersetzung als Zielfeld genutzt werden soll. |
-| `fieldDynamic` | Soll das Zielfeld ebenfalls aus dem Datensatz des Vokabulars übernommen werden, so kann hier das Feld innerhalb des Vokabulars angegeben werden. |
+| `fieldToDynamic` | Soll das Zielfeld ebenfalls aus dem Datensatz des Vokabulars übernommen werden, so kann hier das Feld innerhalb des Vokabulars angegeben werden. |
 | `vocabulary` | Geben Sie hier den Namen des Vokabulars in Goobi workflow an. |
 | `contentSearch` | Definieren Sie hier, welches Feld des Vokabulars für die Suche nach dem Wert aus dem Ausgangsfeld genutzt werden soll. |
 | `contentReplace` | Definieren Sie hier, welches Feld des Vokabulars für die Ersetzung des Wertes aus dem Ausgangsfeld genutzt werden soll. |
+| `metadataDelimiter` | Enthält ein Wert des Ausgangsfeldes mehrere Werte, kann hier ihr Trennzeichen festgelegt werden (z. B. `;`). Jeder Teil wird einzeln gesucht und ersetzt. Der Wert ist ein regulärer Ausdruck, Zeichen wie `|` oder `.` müssen deshalb maskiert werden (`\|`). Ohne Trennzeichen wird der gesamte Wert verwendet. |
+| `vocabularyDelimiter` | Enthält ein Wert des Vokabularfeldes `contentReplace` mehrere Werte, kann hier ihr Trennzeichen festgelegt werden (z. B. `#`). Jeder Teil wird als eigenes Metadatum mit denselben Authority-Informationen geschrieben; umgebende Leerzeichen werden entfernt, leere Teile übersprungen. Der Wert ist ein regulärer Ausdruck, wie bei `metadataDelimiter`. Ohne Trennzeichen wird der gesamte Wert des Vokabulars als ein Metadatum geschrieben. |
 | `contentAuthority` | Sollen Normdaten übernommen werden, kann hier das Feld innerhalb des Vokabulars für die Authority festgelegt werden. |
 | `contentAuthorityUri` | Sollen Normdaten übernommen werden, kann hier das Feld innerhalb des Vokabulars für die Authority URI festgelegt werden. |
 | `contentAuthorityValueUri` | Sollen Normdaten übernommen werden, kann hier das Feld innerhalb des Vokabulars für den Datensatz festgelegt werden. |
 | `duplicateIfMissing` | Soll der originale Wert übernommen werden, wenn innerhalb des Vokabulars keine Entsprechung gefunden wurde, muss dieser Wert auf `true` gesetzt werden. |
+| `deleteExistingFieldTo` | Bei `true` (Standard) werden vorhandene Metadaten des Zielfeldes gelöscht, bevor die neuen Werte geschrieben werden. |
 | `removeDuplicatedFieldTo` | Wenn ein Zielfeld mit gleichem Inhalt mehrfach vorhanden ist, kann mit diesem Parameter festgelegt werden, dass Duplikate entfernt werden. Hierbei wird ausschließlich der Feldtyp und der Wert geprüft. Personen, Körperschaften, Metadatengruppen und auch Authority-Informationen werden nicht berücksichtigt. |
+| `metadataGroup` | Liegen Ausgangs- und Zielfeld innerhalb einer Metadatengruppe, wird hier der Name der Gruppe angegeben. |
 
 Zur Inbetriebnahme des Plugins muss dieses für einen oder mehrere gewünschte Aufgaben im Workflow aktiviert werden. Dies erfolgt wie im folgenden Screenshot aufgezeigt durch Auswahl des Plugins `intranda_step_metadata_replacement` aus der Liste der installierten Plugins.
 

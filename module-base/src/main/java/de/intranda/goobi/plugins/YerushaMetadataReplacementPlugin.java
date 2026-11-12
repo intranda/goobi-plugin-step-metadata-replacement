@@ -3,6 +3,7 @@ package de.intranda.goobi.plugins;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -353,6 +354,7 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
                     .stream()
                     .flatMap(v -> v.getTranslations().stream())
                     .map(TranslationInstance::getValue)
+                    .flatMap(v -> splitVocabularyValue(v, entry.getVocabularyDelimiter()).stream())
                     .toList();
 
             for (String replacementValue : replacementValues) {
@@ -373,6 +375,27 @@ public class YerushaMetadataReplacementPlugin implements IStepPluginVersion2 {
                 resultList.add(md);
             }
         }
+    }
+
+    /**
+     * Splits a vocabulary value into the values to write, using the configured vocabularyDelimiter as a regular expression
+     * (like metadataDelimiter).
+     *
+     * @param value the vocabulary value, may be null
+     * @param delimiter the delimiter, no splitting if null or empty
+     * @return the trimmed, non-empty parts; the unchanged value if no delimiter is given; nothing if the value is null
+     */
+    static List<String> splitVocabularyValue(String value, String delimiter) {
+        if (value == null) {
+            return List.of();
+        }
+        if (StringUtils.isEmpty(delimiter)) {
+            return List.of(value);
+        }
+        return Arrays.stream(value.split(delimiter))
+                .map(String::trim)
+                .filter(StringUtils::isNotEmpty)
+                .toList();
     }
 
     private boolean isExactMatch(ExtendedVocabularyRecord r, FieldDefinition fieldDefinition, String value) {
